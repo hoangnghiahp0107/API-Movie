@@ -53,21 +53,51 @@ export class MovieService {
   }
 
   async deletePhim(ma_phim: number): Promise<any> {
-    await this.model.banner.deleteMany({
-      where: {
-        ma_phim: ma_phim
-      }
-    });
-    await this.model.lichChieu.deleteMany({
-      where: {
-        ma_phim: ma_phim
-      }
-    });
-    const deletedResult = await this.model.phim.delete({
-      where: {
-        ma_phim: ma_phim
-      }
-    });
-    return deletedResult;
+    try {
+      // First, delete associated datVe records
+      const maLichChieuList = await this.model.lichChieu.findMany({
+        select: {
+          ma_lich_chieu: true
+        },
+        where: {
+          ma_phim: ma_phim
+        }
+      });
+  
+      const maLichChieuValues = maLichChieuList.map((item) => item.ma_lich_chieu);
+  
+      await this.model.datVe.deleteMany({
+        where: {
+          ma_lich_chieu: {
+            in: maLichChieuValues
+          }
+        }
+      });
+  
+      // Then, delete associated lichChieu records
+      await this.model.lichChieu.deleteMany({
+        where: {
+          ma_phim: ma_phim
+        }
+      });
+  
+      // Next, delete associated banner records
+      await this.model.banner.deleteMany({
+        where: {
+          ma_phim: ma_phim
+        }
+      });
+  
+      // Finally, delete the phim record
+      const deletedResult = await this.model.phim.delete({
+        where: {
+          ma_phim: ma_phim
+        }
+      });
+  
+      return deletedResult;
+    } catch (error) {
+      throw error;
+    }
   }
 }
